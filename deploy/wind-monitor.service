@@ -1,0 +1,34 @@
+[Unit]
+Description=wind-monitor - Windguru wind alerts
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+# The config holds the secret ntfy topic, so keep it root-only (0600) and pass
+# it in as a credential readable by the dynamic user.
+LoadCredential=config.toml:/etc/wind-monitor/config.toml
+ExecStart=/usr/local/bin/wind-monitor --config ${CREDENTIALS_DIRECTORY}/config.toml
+Restart=on-failure
+RestartSec=30
+Environment=RUST_LOG=info
+
+# Runs as a transient user; state lives in /var/lib/wind-monitor.
+DynamicUser=yes
+StateDirectory=wind-monitor
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,29 @@
+# wind-monitor configuration. Copy to /etc/wind-monitor/config.toml.
+# The thresholds and sectors below are placeholders: set your own.
+
+check_interval_min = 30          # minutes between checks (a little random jitter is added)
+timezone = "Europe/Warsaw"       # timezone used for times in alerts
+# state_file = "/var/lib/wind-monitor/state.json"
+# failure_notice_after = 6       # notify after N consecutive failed fetches of a spot (off by default)
+
+[notify.ntfy]
+server = "https://ntfy.sh"
+topic = "CHANGE-ME-long-random"  # treat as a secret: anyone who knows it can read your alerts
+# token = "tk_..."               # for self-hosted servers with access control
+
+[[spot]]
+id = 931293                      # Windguru spot id (the number in the spot URL)
+name = "Chałupy"
+days_ahead = 3                   # only look this many days ahead
+min_speed_kn = 14                # mean wind must be strictly greater than this
+sector = { from = 110, to = 340 } # optional, clockwise, may wrap through north (e.g. 300..60)
+min_consecutive_hours = 2        # optional, default 1
+# Model priority list: for each hour the first model covering it is used.
+models = ["ICON 2.2 km", "HARM-DK 2 km", "IFS-HRES 9 km", "GFS 13 km"]
+
+[[spot]]
+id = 347
+name = "Zegrze"
+days_ahead = 2
+min_speed_kn = 12
+models = ["ICON 7 km", "ALADIN 2.3 km", "GFS 13 km"]
