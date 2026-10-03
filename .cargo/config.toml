@@ -1,0 +1,12 @@
+# Build a static musl binary by default, so `cargo build --release` produces
+# target/x86_64-unknown-linux-musl/release/wind-monitor, which runs on any
+# x86_64 Linux whatever its glibc version.
+[build]
+target = "x86_64-unknown-linux-musl"
+
+# `ring` compiles C. cc-rs looks for x86_64-linux-musl-gcc, which most hosts
+# don't have; the host gcc works for ring's code on x86_64 Linux. An existing
+# CC_x86_64_unknown_linux_musl in the environment (e.g. from cargo-zigbuild)
+# takes precedence.
+[env]
+CC_x86_64_unknown_linux_musl = "gcc"

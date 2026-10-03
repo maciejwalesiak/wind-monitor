@@ -36,17 +36,21 @@ Model: ICON 2.2 km, GFS 13 km
 
 ## Build
 
-You need Rust, the musl target and a C compiler (for `ring`, the TLS crypto library):
+You need Rust (via rustup) and gcc on an x86_64 Linux host. `ring`, the TLS crypto library, compiles C.
 
 ```sh
-rustup target add x86_64-unknown-linux-musl
-sudo apt install musl-tools        # or: export CC_x86_64_unknown_linux_musl=gcc
-cargo build --release --target x86_64-unknown-linux-musl
+cargo build --release
 file target/x86_64-unknown-linux-musl/release/wind-monitor   # "static-pie linked"
 ldd  target/x86_64-unknown-linux-musl/release/wind-monitor   # "statically linked"
 ```
 
-On macOS, cross-compile with `cargo zigbuild --release --target x86_64-unknown-linux-musl` (cargo-zigbuild) or with `cross`.
+The static musl target is the default:
+- `.cargo/config.toml` sets the build target and points `ring`'s C build at the host `gcc`.
+- `rust-toolchain.toml` makes rustup install the `x86_64-unknown-linux-musl` target automatically.
+
+The binary is therefore **not** in `target/release/`; it's in `target/x86_64-unknown-linux-musl/release/`. To build a glibc binary for local use, pass `--target x86_64-unknown-linux-gnu`.
+
+On macOS, cross-compile with `cargo zigbuild --release` (cargo-zigbuild) or with `cross`. Both set their own C compiler, which overrides the gcc default.
 
 TLS uses rustls with bundled Mozilla root certificates. There is no OpenSSL and no dependency on the system certificate store.
 

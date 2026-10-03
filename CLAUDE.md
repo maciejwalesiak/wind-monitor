@@ -13,8 +13,10 @@ cargo test                           # unit tests + tests/fixtures_parse.rs
 cargo test sector_wraps              # single test by name filter
 cargo clippy --all-targets && cargo fmt --check
 cargo run -- --config config.example.toml --once   # live fetch, prints matches, never notifies or writes state
-cargo build --release --target x86_64-unknown-linux-musl   # needs musl-tools, or CC_x86_64_unknown_linux_musl=gcc (ring compiles C)
+cargo build --release               # static musl binary by default -> target/x86_64-unknown-linux-musl/release/wind-monitor
 ```
+
+`.cargo/config.toml` makes `x86_64-unknown-linux-musl` the default target (tests run as musl binaries too) and sets `CC_x86_64_unknown_linux_musl=gcc` for ring's C code. `rust-toolchain.toml` adds the target via rustup. Output is never in `target/release/`. A glibc build there caused a `GLIBC_2.34 not found` error on the VPS.
 
 In this dev environment `/workspace/target` is root-owned. Set `CARGO_TARGET_DIR` to a writable directory.
 
