@@ -29,6 +29,7 @@ fn check_rows_sane(f: &Forecast) {
 fn parses_chalupy() {
     let f = parse(CHALUPY).unwrap();
     assert!(f.spot_name.contains("Chałupach"), "{}", f.spot_name);
+    assert_eq!(f.coords, Some((54.7588, 18.504)));
     let names: Vec<&str> = f.models.iter().map(|m| m.name.as_str()).collect();
     assert_eq!(
         names,
@@ -85,6 +86,7 @@ fn parses_chalupy() {
 fn parses_zegrze() {
     let f = parse(ZEGRZE).unwrap();
     assert_eq!(f.spot_name, "Poland - Zegrze");
+    assert_eq!(f.coords, Some((52.46, 21.01)));
     assert_eq!(f.models.len(), 11);
     check_rows_sane(&f);
     assert!(f.model("icon 7 KM").is_some());
@@ -102,6 +104,7 @@ fn night_gap_falls_back_to_next_model() {
         min_speed_kn: 0.0,
         sector: None,
         min_consecutive_hours: 1,
+        daylight_only: false,
         models: vec!["Zephr-HD 2.6 km".into(), "GFS 13 km".into()],
     };
     let tl = criteria::timeline(&f, &spot, utc("2026-09-30T17:00:00Z"));
@@ -122,6 +125,7 @@ fn criteria_on_real_feed() {
         min_speed_kn: 0.0,
         sector: None,
         min_consecutive_hours: 1,
+        daylight_only: false,
         models: vec![
             "ICON 2.2 km".into(),
             "HARM-DK 2 km".into(),

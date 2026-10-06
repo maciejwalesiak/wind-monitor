@@ -1,6 +1,7 @@
 //! Turns a parsed forecast into matching wind windows for one spot.
 
 use crate::config::SpotConfig;
+use crate::sun;
 use crate::windguru::{Forecast, ModelForecast, Row, degrees_to_compass};
 use chrono::{DateTime, Duration, DurationRound, Utc};
 
@@ -130,8 +131,11 @@ fn row_covering(model: &ModelForecast, t: DateTime<Utc>) -> Option<&Row> {
     (t < row.time + step && row.speed_kn.is_some()).then_some(row)
 }
 
-fn hour_matches(spot: &SpotConfig, h: &HourPoint) -> bool {
+fn hour_matches(spot: &SpotConfig, coords: Option<(f64, f64)>, h: &HourPoint) -> bool {
     if h.speed_kn <= spot.min_speed_kn {
+        return false;
+    }
+    if spot.daylight_only && !is_daylight_hour(coords, h.time) {
         return false;
     }
     match (spot.sector, h.dir_deg) {
@@ -141,7 +145,14 @@ fn hour_matches(spot: &SpotConfig, h: &HourPoint) -> bool {
     }
 }
 
-/// All windows of at least `min_consecutive_hours` matching hours.
+/// Whether the hour starting at `t` is light, judged at its midpoint. Without
+/// coordinates no hour counts as light.
+fn is_daylight_hour(coords: Option<(f64, f64)>, t: DateTime<Utc>) -> bool {
+    coords.is_some_and(|(lat, lon)| sun::is_daylight(lat, lon, t + Duration::minutes(30)))
+}
+
+/// All windows of at least `min_consecutive_hours` matching hours. With
+/// `daylight_only`, dark hours never match, so windows are cut at dusk.
 pub fn find_windows(forecast: &Forecast, spot: &SpotConfig, now: DateTime<Utc>) -> Vec<Window> {
     let mut windows = Vec::new();
     let mut run: Vec<HourPoint> = Vec::new();
@@ -164,7 +175,7 @@ pub fn find_windows(forecast: &Forecast, spot: &SpotConfig, now: DateTime<Utc>) 
         if !contiguous {
             flush(&mut run);
         }
-        if hour_matches(spot, &h) {
+        if hour_matches(spot, forecast.coords, &h) {
             run.push(h);
         } else {
             flush(&mut run);
@@ -214,6 +225,7 @@ mod tests {
             min_speed_kn: 12.0,
             sector: None,
             min_consecutive_hours: 1,
+            daylight_only: false,
             models: models.iter().map(|s| s.to_string()).collect(),
         }
     }
@@ -221,6 +233,8 @@ mod tests {
     fn fc(models: Vec<ModelForecast>) -> Forecast {
         Forecast {
             spot_name: "Test".into(),
+            // Warsaw
+            coords: Some((52.23, 21.01)),
             models,
         }
     }
@@ -341,5 +355,40 @@ mod tests {
         assert_eq!(tl.len(), 9); // hours 0..=8, last row covers 6..9
         assert_eq!(tl[4].time, h(4));
         assert_eq!(tl[4].speed_kn, 15.0);
+    }
+
+    #[test]
+    fn daylight_only_cuts_windows_at_dusk() {
+        // 2026-10-01 in Warsaw: civil dusk ~17:05 UTC, civil dawn (Oct 2)
+        // ~04:15 UTC. Wind all day from 12:00 UTC to 12:00 UTC next day.
+        let f = fc(vec![model("GFS", 12, 1, &s(&[15.0; 24]))]);
+        let mut sp = spot(&["GFS"]);
+        sp.daylight_only = true;
+        let w = find_windows(&f, &sp, h(12));
+        let spans: Vec<_> = w.iter().map(|w| (w.start, w.end)).collect();
+        assert_eq!(spans, vec![(h(12), h(17)), (h(28), h(36))]);
+
+        // Off: one continuous window.
+        sp.daylight_only = false;
+        assert_eq!(find_windows(&f, &sp, h(12)).len(), 1);
+    }
+
+    #[test]
+    fn daylight_only_counts_only_light_hours_toward_min_consecutive() {
+        // 3 windy hours, but only the first one (16:00 UTC) is light.
+        let f = fc(vec![model("GFS", 16, 1, &s(&[15.0; 3]))]);
+        let mut sp = spot(&["GFS"]);
+        sp.daylight_only = true;
+        sp.min_consecutive_hours = 2;
+        assert!(find_windows(&f, &sp, h(16)).is_empty());
+    }
+
+    #[test]
+    fn daylight_only_without_coordinates_matches_nothing() {
+        let mut f = fc(vec![model("GFS", 0, 1, &s(&[15.0; 24]))]);
+        f.coords = None;
+        let mut sp = spot(&["GFS"]);
+        sp.daylight_only = true;
+        assert!(find_windows(&f, &sp, t0()).is_empty());
     }
 }

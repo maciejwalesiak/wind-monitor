@@ -30,6 +30,8 @@ pub const VARIABLES: &str = "WSPD,GUST,WDIRN,WDEG";
 pub struct Forecast {
     /// Spot description from the feed header, e.g. "Poland - Zegrze".
     pub spot_name: String,
+    /// Spot coordinates (lat, lon) from the feed header.
+    pub coords: Option<(f64, f64)>,
     pub models: Vec<ModelForecast>,
 }
 
@@ -109,14 +111,15 @@ pub fn parse(input: &str) -> Result<Forecast> {
     let text = extract_pre(input);
     let lines: Vec<&str> = text.lines().collect();
 
-    let spot_name = lines
-        .iter()
-        .find_map(|l| {
+    let header = lines.iter().find(|l| l.contains("lat:")).copied();
+    let spot_name = header
+        .and_then(|l| {
             l.find("lat:")
                 .map(|i| l[..i].trim().trim_end_matches(',').trim())
         })
         .unwrap_or_default()
         .to_string();
+    let coords = header.and_then(|l| Some((header_value(l, "lat:")?, header_value(l, "lon:")?)));
 
     let mut models = Vec::new();
     let mut i = 0;
@@ -135,7 +138,17 @@ pub fn parse(input: &str) -> Result<Forecast> {
         let snippet: String = text.trim().chars().take(200).collect();
         bail!("no model forecasts found in response: {snippet:?}");
     }
-    Ok(Forecast { spot_name, models })
+    Ok(Forecast {
+        spot_name,
+        coords,
+        models,
+    })
+}
+
+/// `"..., lat: 52.46, lon: 21.01, ..."`, `"lat:"` → 52.46
+fn header_value(line: &str, key: &str) -> Option<f64> {
+    let rest = &line[line.find(key)? + key.len()..];
+    rest.split(',').next()?.trim().parse().ok()
 }
 
 fn extract_pre(input: &str) -> String {
@@ -359,6 +372,7 @@ GFS 13 km (init: 2026-12-31 18 UTC)
 ";
         let f = parse(text).unwrap();
         assert_eq!(f.spot_name, "Somewhere");
+        assert_eq!(f.coords, Some((1.0, 2.0)));
         let rows = &f.models[0].rows;
         assert_eq!(rows[0].time, utc("2026-12-31T21:00:00Z"));
         assert_eq!(rows[0].gust_kn, None);

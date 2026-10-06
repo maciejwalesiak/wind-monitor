@@ -18,6 +18,7 @@ days_ahead = 3                   # only look this many days ahead
 min_speed_kn = 14                # mean wind must be strictly greater than this
 sector = { from = 110, to = 340 } # optional, clockwise, may wrap through north (e.g. 300..60)
 min_consecutive_hours = 2        # optional, default 1
+daylight_only = true             # optional, default false: ignore hours when it is dark
 # Model priority list: for each hour the first model covering it is used.
 models = ["ICON 2.2 km", "HARM-DK 2 km", "IFS-HRES 9 km", "GFS 13 km"]
 
