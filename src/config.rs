@@ -56,6 +56,10 @@ pub struct SpotConfig {
     pub sector: Option<Sector>,
     #[serde(default = "default_min_consecutive_hours")]
     pub min_consecutive_hours: u32,
+    /// Only count hours when it is light (sun above civil twilight, -6°) at
+    /// the spot's coordinates from the feed.
+    #[serde(default)]
+    pub daylight_only: bool,
     /// Model priority list, e.g. ["ICON 2.2 km", "GFS 13 km"].
     pub models: Vec<String>,
 }

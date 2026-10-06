@@ -78,6 +78,12 @@ impl Service {
         now: DateTime<Utc>,
     ) -> bool {
         warn_missing_models(spot, forecast);
+        if spot.daylight_only && forecast.coords.is_none() {
+            tracing::warn!(
+                spot = spot.name,
+                "daylight_only is set but the feed has no coordinates; no hours will match"
+            );
+        }
         let windows = criteria::find_windows(forecast, spot, now);
         tracing::info!(spot = spot.name, windows = windows.len(), "checked");
         let horizon = criteria::horizon_start(now);
@@ -160,6 +166,14 @@ pub async fn run_once(config: &Config, now: DateTime<Utc>) -> Result<bool> {
             }
         };
         println!("  feed: {}", forecast.spot_name);
+        if spot.daylight_only {
+            match forecast.coords {
+                Some((lat, lon)) => println!("  daylight only, at lat {lat}, lon {lon}"),
+                None => {
+                    println!("  daylight only, but the feed has NO COORDINATES: nothing will match")
+                }
+            }
+        }
         for name in &spot.models {
             match forecast.model(name) {
                 Some(m) => println!("  model {name}: init {}, {} rows", m.init, m.rows.len()),

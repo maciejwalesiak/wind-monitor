@@ -13,6 +13,7 @@ Every `check_interval_min` minutes (plus a little random jitter) it runs one che
 3. An hour **matches** when:
    - the mean wind is strictly greater than `min_speed_kn`, and
    - if a `sector` is set, the direction is inside it.
+   - if `daylight_only` is set, it is light at the spot (from civil dawn to civil dusk).
 4. A run of at least `min_consecutive_hours` matching hours is a **window**. Each window triggers one alert. It alerts again only when:
    - the window's start moves by 3 h or more,
    - its peak speed changes by 5 kn or more, or
@@ -114,6 +115,7 @@ Each `[[spot]]`:
 | `min_speed_kn` | required | Mean wind must be **strictly greater** than this. |
 | `sector` | none | `{ from = 300, to = 60 }`: allowed direction range in degrees, read clockwise, may wrap through north. Wind direction is where it blows *from*. |
 | `min_consecutive_hours` | `1` | Minimum run of matching hours for a window. |
+| `daylight_only` | `false` | Only count hours when it is light at the spot. Light means the sun is above −6° (civil twilight), at the coordinates from the Windguru feed, judged at the middle of each hour. Dark hours never match, so a window running into the night is cut at dusk, and `min_consecutive_hours` counts only light hours. |
 | `models` | required | Model priority list, using the names exactly as Windguru prints them (case and spacing don't matter). |
 
 Model names seen for Polish spots include `ICON 2.2 km`, `HARM-DK 2 km`, `MET Nordic 1 km`, `ALADIN 2.3 km`, `HARM-FI 2.5 km`, `HARMONIE 5 km`, `ICON 7 km`, `WRF 9 km`, `Zephr-HD 2.6 km`, `IFS-HRES 9 km`, `ICON 13 km`, `GFS 13 km` and `GDPS 15 km`. Run `wind-monitor --once` to see which ones your spot has. A configured model that is missing from the feed is logged as a warning.
